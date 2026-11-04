@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero de Seguimiento de Proyectos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Smooth Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.25); }
+        .glow-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); }
+        .glow-emerald { box-shadow: 0 0 15px rgba(16, 185, 129, 0.25); }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-x-hidden antialiased">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                    <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">ControlTrack Pro</h1>
+                    <p class="text-xs text-slate-400">Seguimiento de Proyectos & Semaforización</p>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-3">
+                <button onclick="openProjectModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Nuevo Proyecto</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI Metric Cards (Semaforización & Estados) -->
+        <section class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+            <!-- Total -->
+            <div onclick="setFilterStatus('all')" class="cursor-pointer bg-slate-800/60 border border-slate-700/60 hover:border-slate-600 p-4 rounded-2xl transition-all shadow-sm group">
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Total</span>
+                    <i data-lucide="folder-kanban" class="w-4 h-4 group-hover:text-white transition-colors"></i>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-white" id="kpi-total">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">Proyectos registrados</div>
+            </div>
+
+            <!-- A Tiempo -->
+            <div onclick="setFilterStatus('ontrack')" class="cursor-pointer bg-emerald-950/20 border border-emerald-800/40 hover:border-emerald-500/50 p-4 rounded-2xl transition-all shadow-sm group">
+                <div class="flex items-center justify-between text-emerald-400 mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider">En Tiempo</span>
+                    <span class="flex h-2.5 w-2.5 relative">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400" id="kpi-ontrack">0</div>
+                <div class="text-[11px] text-emerald-500/80 mt-1">Semaforo Verde</div>
+            </div>
+
+            <!-- Por Vencer -->
+            <div onclick="setFilterStatus('warning')" class="cursor-pointer bg-amber-950/20 border border-amber-800/40 hover:border-amber-500/50 p-4 rounded-2xl transition-all shadow-sm group">
+                <div class="flex items-center justify-between text-amber-400 mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Próximos</span>
+                    <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-amber-400" id="kpi-warning">0</div>
+                <div class="text-[11px] text-amber-500/80 mt-1">Vencimiento en ≤ 5 días</div>
+            </div>
+
+            <!-- Vencidos -->
+            <div onclick="setFilterStatus('overdue')" class="cursor-pointer bg-red-950/20 border border-red-800/40 hover:border-red-500/50 p-4 rounded-2xl transition-all shadow-sm group">
+                <div class="flex items-center justify-between text-red-400 mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Vencidos</span>
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-red-400 animate-bounce"></i>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-red-400" id="kpi-overdue">0</div>
+                <div class="text-[11px] text-red-500/80 mt-1">Requieren atención urgente</div>
+            </div>
+
+            <!-- Completados -->
+            <div onclick="setFilterStatus('completed')" class="cursor-pointer bg-blue-950/20 border border-blue-800/40 hover:border-blue-500/50 p-4 rounded-2xl transition-all shadow-sm col-span-2 md:col-span-1 group">
+                <div class="flex items-center justify-between text-blue-400 mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Completados</span>
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-blue-400" id="kpi-completed">0</div>
+                <div class="text-[11px] text-blue-500/80 mt-1">Metas alcanzadas</div>
+            </div>
+        </section>
+
+        <!-- Filters & Toolbar -->
+        <section class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl space-y-3 md:space-y-0 md:flex md:items-center md:justify-between gap-4">
+            
+            <!-- Search & Filters -->
+            <div class="flex flex-wrap items-center gap-3 flex-1">
+                <!-- Search input -->
+                <div class="relative min-w-[220px] flex-1 sm:flex-initial">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="renderProjects()" placeholder="Buscar por proyecto o responsable..." class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl pl-9 pr-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors">
+                </div>
+
+                <!-- Status Filter -->
+                <select id="statusFilter" onchange="renderProjects()" class="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                    <option value="all">Todos los Semáforos</option>
+                    <option value="ontrack">🟢 En Tiempo</option>
+                    <option value="warning">🟡 Próximo a Vencer</option>
+                    <option value="overdue">🔴 Vencido</option>
+                    <option value="completed">🔵 Completado</option>
+                </select>
+
+                <!-- Priority Filter -->
+                <select id="priorityFilter" onchange="renderProjects()" class="bg-slate-900 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                    <option value="all">Todas las Prioridades</option>
+                    <option value="Alta">Prioridad Alta</option>
+                    <option value="Media">Prioridad Media</option>
+                    <option value="Baja">Prioridad Baja</option>
+                </select>
+            </div>
+
+            <!-- View Switcher & Export -->
+            <div class="flex items-center gap-2 border-t md:border-t-0 border-slate-700/60 pt-3 md:pt-0">
+                <div class="bg-slate-900 p-1 rounded-xl border border-slate-700/80 flex items-center gap-1">
+                    <button onclick="setViewMode('table')" id="btn-view-table" class="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 bg-indigo-600 text-white transition-colors">
+                        <i data-lucide="table" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Tabla</span>
+                    </button>
+                    <button onclick="setViewMode('cards')" id="btn-view-cards" class="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 text-slate-400 hover:text-white transition-colors">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Tarjetas</span>
+                    </button>
+                </div>
+
+                <button onclick="resetDataToDemo()" class="p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-700 rounded-xl transition-colors text-xs flex items-center gap-1.5" title="Cargar datos de prueba">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Restablecer</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Projects Container View -->
+        <section id="projectsContainer" class="min-h-[300px]">
+            <!-- Rendered dynamically via JavaScript -->
+        </section>
+
+    </main>
+
+    <!-- Modal Form (Create / Edit Project) -->
+    <div id="projectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    </div>
+                    <h3 id="modalTitle" class="text-lg font-bold text-white">Nuevo Proyecto</h3>
+                </div>
+                <button onclick="closeProjectModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="projectForm" onsubmit="saveProject(event)" class="space-y-4">
+                <input type="hidden" id="projectId">
+
+                <!-- Project Name -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Nombre del Proyecto *</label>
+                    <input type="text" id="projectName" required placeholder="Ej. Implementación de CRM Corporativo" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Descripción Breve</label>
+                    <textarea id="projectDesc" rows="2" placeholder="Detalles u objetivos del proyecto..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+
+                <!-- Assignee & Area -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Responsable Principal *</label>
+                        <input type="text" id="projectAssignee" required placeholder="Ej. Laura Gómez" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Rol / Departamento</label>
+                        <input type="text" id="projectRole" placeholder="Ej. Gerente de TI" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Dates -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Fecha de Inicio</label>
+                        <input type="date" id="projectStartDate" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Fecha de Compromiso (Vencimiento) *</label>
+                        <input type="date" id="projectDueDate" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Priority & Progress -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Prioridad</label>
+                        <select id="projectPriority" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <option value="Alta">Alta</option>
+                            <option value="Media" selected>Media</option>
+                            <option value="Baja">Baja</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-slate-300">Avance (%)</label>
+                            <span id="progressVal" class="text-xs font-bold text-indigo-400">0%</span>
+                        </div>
+                        <input type="range" id="projectProgress" min="0" max="100" value="0" oninput="document.getElementById('progressVal').innerText = this.value + '%'" class="w-full accent-indigo-500 h-2 bg-slate-950 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Subtasks Manager -->
+                <div class="space-y-2 pt-2 border-t border-slate-800">
+                    <label class="block text-xs font-medium text-slate-300">Lista de Hitos / Entregables</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="newSubtaskInput" placeholder="Añadir una sub-tarea..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                        <button type="button" onclick="addModalSubtask()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700">Añadir</button>
+                    </div>
+                    <ul id="modalSubtaskList" class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                        <!-- Subtasks injected here -->
+                    </ul>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeProjectModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-xl transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl shadow-lg shadow-indigo-600/20 transition-all">Guardar Proyecto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h4 class="text-lg font-bold text-white">¿Eliminar Proyecto?</h4>
+                <p class="text-xs text-slate-400 mt-1">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl">Cancelar</button>
+                <button id="btnConfirmDelete" onclick="confirmDeleteProject()" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-xl shadow-lg shadow-red-600/20">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        // State Management
+        let projects = [];
+        let viewMode = 'table'; // 'table' | 'cards'
+        let currentFilterStatus = 'all';
+        let projectToDeleteId = null;
+        let tempModalSubtasks = [];
+
+        // Initial Sample Data (Ensures dates look real and dynamically calculated)
+        function generateDemoData() {
+            const today = new Date();
+            
+            const formatDate = (daysOffset) => {
+                const d = new Date(today);
+                d.setDate(d.getDate() + daysOffset);
+                return d.toISOString().split('T')[0];
+            };
+
+            return [
+                {
+                    id: 'proj-1',
+                    name: 'Migración a Infraestructura Cloud',
+                    description: 'Traslado de base de datos legacy a arquitectura en la nube (AWS).',
+                    assignee: 'Sofía Martínez',
+                    role: 'Lead Cloud Architect',
+                    startDate: formatDate(-20),
+                    dueDate: formatDate(-2), // Overdue by 2 days
+                    progress: 70,
+                    priority: 'Alta',
+                    subtasks: [
+                        { id: 1, text: 'Pruebas de latencia', done: true },
+                        { id: 2, text: 'Migración de esquema BD', done: true },
+                        { id: 3, text: 'Paso a producción', done: false }
+                    ]
+                },
+                {
+                    id: 'proj-2',
+                    name: 'Implementación de Módulo de Facturación',
+                    description: 'Desarrollo e integración de API para facturación fiscal automática.',
+                    assignee: 'Carlos Mendoza',
+                    role: 'Desarrollador Backend',
+                    startDate: formatDate(-10),
+                    dueDate: formatDate(3), // Expiring in 3 days (Warning)
+                    progress: 85,
+                    priority: 'Alta',
+                    subtasks: [
+                        { id: 1, text: 'Firma electrónica integraciones', done: true },
+                        { id: 2, text: 'Pruebas unitarias de timbrado', done: false }
+                    ]
+                },
+                {
+                    id: 'proj-3',
+                    name: 'Rediseño de Experiencia de Usuario (UI/UX)',
+                    description: 'Modernización del portal corporativo para dispositivos móviles.',
+                    assignee: 'Elena Torres',
+                    role: 'Diseñadora UX/UI',
+                    startDate: formatDate(-5),
+                    dueDate: formatDate(15), // On track (15 days remaining)
+                    progress: 40,
+                    priority: 'Media',
+                    subtasks: [
+                        { id: 1, text: 'Investigación con usuarios', done: true },
+                        { id: 2, text: 'Design System Figma', done: true },
+                        { id: 3, text: 'Prototipado interactivo', done: false }
+                    ]
+                },
+                {
+                    id: 'proj-4',
+                    name: 'Auditoría de Seguridad e ISO 27001',
+                    description: 'Evaluación de riesgos y parches de vulnerabilidades del sistema.',
+                    assignee: 'Alejandro Ríos',
+                    role: 'Oficial de Seguridad',
+                    startDate: formatDate(-30),
+                    dueDate: formatDate(-5),
+                    progress: 100, // Completed
+                    priority: 'Alta',
+                    subtasks: [
+                        { id: 1, text: 'Pentesting externo', done: true },
+                        { id: 2, text: 'Reporte final y certificación', done: true }
+                    ]
+                },
+                {
+                    id: 'proj-5',
+                    name: 'Campaña de Onboarding Digital',
+                    description: 'Automatización de emails y guías interactivas para clientes nuevos.',
+                    assignee: 'Mariana Silva',
+                    role: 'Product Marketing',
+                    startDate: formatDate(-2),
+                    dueDate: formatDate(10), // On Track
+                    progress: 20,
+                    priority: 'Baja',
+                    subtasks: [
+                        { id: 1, text: 'Redacción de contenidos', done: true },
+                        { id: 2, text: 'Configuración en CRM', done: false }
+                    ]
+                }
+            ];
+        }
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            loadProjects();
+            renderProjects();
+            lucide.createIcons();
+        });
+
+        // Load / Save Data
+        function loadProjects() {
+            const saved = localStorage.getItem('controltrack_projects');
+            if (saved) {
+                try {
+                    projects = JSON.parse(saved);
+                } catch (e) {
+                    projects = generateDemoData();
+                }
+            } else {
+                projects = generateDemoData();
+            }
+        }
+
+        function saveProjects() {
+            localStorage.setItem('controltrack_projects', JSON.stringify(projects));
+            renderProjects();
+        }
+
+        function resetDataToDemo() {
+            projects = generateDemoData();
+            saveProjects();
+            showToast('Datos restablecidos con éxito', 'info');
+        }
+
+        // Semaforización & Status Calculator Logic
+        function getStatusInfo(project) {
+            if (project.progress === 100) {
+                return {
+                    code: 'completed',
+                    label: 'Completado',
+                    bgBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+                    dotBg: 'bg-blue-500',
+                    alertBg: 'bg-blue-950/40 text-blue-300 border-blue-800/50',
+                    icon: 'check-circle-2',
+                    alertMsg: '¡Proyecto finalizado!',
+                    daysText: 'Entregado'
+                };
+            }
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const dueParts = project.dueDate.split('-');
+            const dueDate = new Date(dueParts[0], dueParts[1] - 1, dueParts[2]);
+            dueDate.setHours(0,0,0,0);
+
+            const diffTime = dueDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                const overdueDays = Math.abs(diffDays);
+                return {
+                    code: 'overdue',
+                    label: 'Vencido',
+                    bgBadge: 'bg-red-500/10 text-red-400 border-red-500/30 glow-red',
+                    dotBg: 'bg-red-500 animate-ping',
+                    alertBg: 'bg-red-950/60 text-red-300 border-red-800/60',
+                    icon: 'alert-octagon',
+                    alertMsg: `🚨 Atrasado por ${overdueDays} día(s)`,
+                    daysText: `${overdueDays}d atrasado`
+                };
+            } else if (diffDays <= 5) {
+                return {
+                    code: 'warning',
+                    label: 'Próximo a Vencer',
+                    bgBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/30 glow-amber',
+                    dotBg: 'bg-amber-500',
+                    alertBg: 'bg-amber-950/60 text-amber-300 border-amber-800/60',
+                    icon: 'clock',
+                    alertMsg: diffDays === 0 ? '⚠️ Vence el día de hoy' : `⚠️ Vence en ${diffDays} día(s)`,
+                    daysText: diffDays === 0 ? 'Vence hoy' : `${diffDays}d restantes`
+                };
+            } else {
+                return {
+                    code: 'ontrack',
+                    label: 'En Tiempo',
+                    bgBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 glow-emerald',
+                    dotBg: 'bg-emerald-500',
+                    alertBg: 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50',
+                    icon: 'shield-check',
+                    alertMsg: `🟢 Quedan ${diffDays} días de margen`,
+                    daysText: `${diffDays}d restantes`
+                };
+            }
+        }
+
+        // Render Dashboard KPIs
+        function updateKPIs() {
+            let total = projects.length;
+            let ontrack = 0;
+            let warning = 0;
+            let overdue = 0;
+            let completed = 0;
+
+            projects.forEach(p => {
+                const status = getStatusInfo(p);
+                if (status.code === 'completed') completed++;
+                else if (status.code === 'overdue') overdue++;
+                else if (status.code === 'warning') warning++;
+                else if (status.code === 'ontrack') ontrack++;
+            });
+
+            document.getElementById('kpi-total').innerText = total;
+            document.getElementById('kpi-ontrack').innerText = ontrack;
+            document.getElementById('kpi-warning').innerText = warning;
+            document.getElementById('kpi-overdue').innerText = overdue;
+            document.getElementById('kpi-completed').innerText = completed;
+        }
+
+        // Render Projects Table or Cards
+        function renderProjects() {
+            updateKPIs();
+            const container = document.getElementById('projectsContainer');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+
+            // Filter logic
+            const filtered = projects.filter(p => {
+                const status = getStatusInfo(p);
+                const matchesSearch = p.name.toLowerCase().includes(search) || p.assignee.toLowerCase().includes(search);
+                const matchesStatus = statusFilter === 'all' || status.code === statusFilter;
+                const matchesPriority = priorityFilter === 'all' || p.priority === priorityFilter;
+                return matchesSearch && matchesStatus && matchesPriority;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-800/30 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
+                        <div class="w-12 h-12 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto">
+                            <i data-lucide="folder-search" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-slate-300">No se encontraron proyectos</h3>
+                        <p class="text-xs text-slate-500 max-w-sm mx-auto">Ajusta los filtros de búsqueda o agrega un nuevo proyecto para comenzar el seguimiento.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            if (viewMode === 'table') {
+                renderTableView(container, filtered);
+            } else {
+                renderCardsView(container, filtered);
+            }
+
+            lucide.createIcons();
+        }
+
+        // Table View Renderer
+        function renderTableView(container, items) {
+            let html = `
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/80 border-b border-slate-700/80 text-xs uppercase font-semibold text-slate-400">
+                                <tr>
+                                    <th class="py-3.5 px-4">Semáforo / Estado</th>
+                                    <th class="py-3.5 px-4">Proyecto</th>
+                                    <th class="py-3.5 px-4">Responsable</th>
+                                    <th class="py-3.5 px-4">F. Compromiso</th>
+                                    <th class="py-3.5 px-4">Avance</th>
+                                    <th class="py-3.5 px-4">Prioridad</th>
+                                    <th class="py-3.5 px-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/80">
+            `;
+
+            items.forEach(p => {
+                const status = getStatusInfo(p);
+                const subtasksDone = p.subtasks ? p.subtasks.filter(s => s.done).length : 0;
+                const subtasksTotal = p.subtasks ? p.subtasks.length : 0;
+
+                html += `
+                    <tr class="hover:bg-slate-800/50 transition-colors group">
+                        <!-- Semáforo Badge -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.bgBadge}">
+                                <span class="w-2 h-2 rounded-full ${status.dotBg}"></span>
+                                <span>${status.label}</span>
+                            </div>
+                        </td>
+
+                        <!-- Name & Desc -->
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-100 group-hover:text-indigo-400 transition-colors">${escapeHtml(p.name)}</div>
+                            <div class="text-xs text-slate-400 truncate max-w-xs">${escapeHtml(p.description || 'Sin descripción')}</div>
+                            ${status.code === 'overdue' || status.code === 'warning' ? `
+                                <div class="mt-1 text-[11px] font-medium ${status.alertBg} px-2 py-0.5 rounded-md inline-block">
+                                    ${status.alertMsg}
+                                </div>
+                            ` : ''}
+                        </td>
+
+                        <!-- Assignee -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-slate-700 text-indigo-300 font-bold text-xs flex items-center justify-center border border-slate-600">
+                                    ${getInitials(p.assignee)}
+                                </div>
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-200">${escapeHtml(p.assignee)}</div>
+                                    <div class="text-[11px] text-slate-400">${escapeHtml(p.role || 'Miembro')}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Date -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="text-xs font-medium text-slate-200">${formatDateDisplay(p.dueDate)}</div>
+                            <div class="text-[11px] text-slate-400">${status.daysText}</div>
+                        </td>
+
+                        <!-- Progress -->
+                        <td class="py-3.5 px-4 whitespace-nowrap min-w-[140px]">
+                            <div class="flex items-center justify-between text-xs mb-1">
+                                <span class="font-bold ${p.progress === 100 ? 'text-blue-400' : 'text-slate-300'}">${p.progress}%</span>
+                                ${subtasksTotal > 0 ? `<span class="text-[10px] text-slate-400">${subtasksDone}/${subtasksTotal} hitos</span>` : ''}
+                            </div>
+                            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                                <div class="h-full rounded-full transition-all duration-500 ${p.progress === 100 ? 'bg-blue-500' : status.code === 'overdue' ? 'bg-red-500' : status.code === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${p.progress}%"></div>
+                            </div>
+                        </td>
+
+                        <!-- Priority -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${getPriorityBadge(p.priority)}">
+                                ${p.priority}
+                            </span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="py-3.5 px-4 whitespace-nowrap text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <button onclick="openProjectModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-700/50 rounded-lg transition-colors" title="Editar proyecto">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="openDeleteModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-colors" title="Eliminar proyecto">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Cards View Renderer
+        function renderCardsView(container, items) {
+            let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+
+            items.forEach(p => {
+                const status = getStatusInfo(p);
+                const subtasksDone = p.subtasks ? p.subtasks.filter(s => s.done).length : 0;
+                const subtasksTotal = p.subtasks ? p.subtasks.length : 0;
+
+                html += `
+                    <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-5 hover:border-slate-600 transition-all shadow-md flex flex-col justify-between space-y-4 group">
+                        
+                        <!-- Top Row: Status Pill & Priority -->
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.bgBadge}">
+                                <span class="w-2 h-2 rounded-full ${status.dotBg}"></span>
+                                <span>${status.label}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${getPriorityBadge(p.priority)}">
+                                ${p.priority}
+                            </span>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="space-y-1.5">
+                            <h4 class="font-bold text-slate-100 text-base group-hover:text-indigo-400 transition-colors leading-snug">${escapeHtml(p.name)}</h4>
+                            <p class="text-xs text-slate-400 line-clamp-2">${escapeHtml(p.description || 'Sin descripción adicional.')}</p>
+                        </div>
+
+                        <!-- Alert Box if Critical -->
+                        <div class="text-xs p-2.5 rounded-xl border ${status.alertBg} flex items-center gap-2">
+                            <i data-lucide="${status.icon}" class="w-4 h-4 shrink-0"></i>
+                            <span class="font-medium">${status.alertMsg}</span>
+                        </div>
+
+                        <!-- Subtasks Progress Checklist (Quick View) -->
+                        ${subtasksTotal > 0 ? `
+                            <div class="space-y-1.5 pt-1">
+                                <div class="flex justify-between text-[11px] text-slate-400 font-medium">
+                                    <span>Hitos (${subtasksDone}/${subtasksTotal})</span>
+                                </div>
+                                <div class="space-y-1">
+                                    ${p.subtasks.map(st => `
+                                        <div onclick="toggleSubtask('${p.id}', ${st.id})" class="cursor-pointer flex items-center gap-2 text-xs text-slate-300 hover:text-white">
+                                            <i data-lucide="${st.done ? 'check-square' : 'square'}" class="w-3.5 h-3.5 ${st.done ? 'text-indigo-400' : 'text-slate-500'}"></i>
+                                            <span class="${st.done ? 'line-through text-slate-500' : ''}">${escapeHtml(st.text)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Progress Bar -->
+                        <div class="space-y-1 pt-2 border-t border-slate-700/50">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-400">Avance General</span>
+                                <span class="font-bold text-slate-200">${p.progress}%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                                <div class="h-full rounded-full ${p.progress === 100 ? 'bg-blue-500' : status.code === 'overdue' ? 'bg-red-500' : status.code === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${p.progress}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Footer: Assignee & Actions -->
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-slate-700 text-indigo-300 font-bold text-[11px] flex items-center justify-center border border-slate-600">
+                                    ${getInitials(p.assignee)}
+                                </div>
+                                <span class="text-xs text-slate-300 truncate max-w-[120px]">${escapeHtml(p.assignee)}</span>
+                            </div>
+
+                            <div class="flex items-center gap-1">
+                                <button onclick="openProjectModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-700/50 rounded-lg transition-colors">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="openDeleteModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // Subtask toggle directly from UI
+        function toggleSubtask(projectId, subtaskId) {
+            const project = projects.find(p => p.id === projectId);
+            if (!project || !project.subtasks) return;
+
+            const st = project.subtasks.find(s => s.id === subtaskId);
+            if (st) {
+                st.done = !st.done;
+                
+                // Auto calculate progress percentage based on completed subtasks
+                const doneCount = project.subtasks.filter(s => s.done).length;
+                project.progress = Math.round((doneCount / project.subtasks.length) * 100);
+
+                saveProjects();
+                showToast('Hito actualizado', 'info');
+            }
+        }
+
+        // View Switcher
+        function setViewMode(mode) {
+            viewMode = mode;
+            const btnTable = document.getElementById('btn-view-table');
+            const btnCards = document.getElementById('btn-view-cards');
+
+            if (mode === 'table') {
+                btnTable.className = "p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 bg-indigo-600 text-white transition-colors";
+                btnCards.className = "p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 text-slate-400 hover:text-white transition-colors";
+            } else {
+                btnCards.className = "p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 bg-indigo-600 text-white transition-colors";
+                btnTable.className = "p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 text-slate-400 hover:text-white transition-colors";
+            }
+            renderProjects();
+        }
+
+        function setFilterStatus(status) {
+            document.getElementById('statusFilter').value = status;
+            renderProjects();
+        }
+
+        // Modal Handlers (Create & Edit)
+        function openProjectModal(id = null) {
+            const modal = document.getElementById('projectModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('projectForm');
+
+            form.reset();
+            tempModalSubtasks = [];
+
+            if (id) {
+                const p = projects.find(item => item.id === id);
+                if (p) {
+                    modalTitle.innerText = "Editar Proyecto";
+                    document.getElementById('projectId').value = p.id;
+                    document.getElementById('projectName').value = p.name;
+                    document.getElementById('projectDesc').value = p.description || '';
+                    document.getElementById('projectAssignee').value = p.assignee;
+                    document.getElementById('projectRole').value = p.role || '';
+                    document.getElementById('projectStartDate').value = p.startDate || '';
+                    document.getElementById('projectDueDate').value = p.dueDate;
+                    document.getElementById('projectPriority').value = p.priority;
+                    document.getElementById('projectProgress').value = p.progress;
+                    document.getElementById('progressVal').innerText = p.progress + '%';
+                    tempModalSubtasks = p.subtasks ? JSON.parse(JSON.stringify(p.subtasks)) : [];
+                }
+            } else {
+                modalTitle.innerText = "Nuevo Proyecto";
+                document.getElementById('projectId').value = '';
+                const todayStr = new Date().toISOString().split('T')[0];
+                document.getElementById('projectStartDate').value = todayStr;
+                
+                // Default due date to +7 days
+                const defaultDue = new Date();
+                defaultDue.setDate(defaultDue.getDate() + 7);
+                document.getElementById('projectDueDate').value = defaultDue.toISOString().split('T')[0];
+                document.getElementById('progressVal').innerText = '0%';
+            }
+
+            renderModalSubtasks();
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeProjectModal() {
+            const modal = document.getElementById('projectModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function renderModalSubtasks() {
+            const list = document.getElementById('modalSubtaskList');
+            list.innerHTML = '';
+            tempModalSubtasks.forEach((st, idx) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs';
+                li.innerHTML = `
+                    <span class="text-slate-300 truncate">${escapeHtml(st.text)}</span>
+                    <button type="button" onclick="removeModalSubtask(${idx})" class="text-slate-500 hover:text-red-400">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                list.appendChild(li);
+            });
+            lucide.createIcons();
+        }
+
+        function addModalSubtask() {
+            const input = document.getElementById('newSubtaskInput');
+            const text = input.value.trim();
+            if (text) {
+                tempModalSubtasks.push({ id: Date.now(), text: text, done: false });
+                input.value = '';
+                renderModalSubtasks();
+            }
+        }
+
+        function removeModalSubtask(index) {
+            tempModalSubtasks.splice(index, 1);
+            renderModalSubtasks();
+        }
+
+        function saveProject(e) {
+            e.preventDefault();
+            const id = document.getElementById('projectId').value;
+            const name = document.getElementById('projectName').value.trim();
+            const description = document.getElementById('projectDesc').value.trim();
+            const assignee = document.getElementById('projectAssignee').value.trim();
+            const role = document.getElementById('projectRole').value.trim();
+            const startDate = document.getElementById('projectStartDate').value;
+            const dueDate = document.getElementById('projectDueDate').value;
+            const priority = document.getElementById('projectPriority').value;
+            const progress = parseInt(document.getElementById('projectProgress').value);
+
+            if (!name || !assignee || !dueDate) {
+                showToast('Por favor completa los campos requeridos', 'error');
+                return;
+            }
+
+            if (id) {
+                // Update
+                const index = projects.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    projects[index] = {
+                        ...projects[index],
+                        name,
+                        description,
+                        assignee,
+                        role,
+                        startDate,
+                        dueDate,
+                        priority,
+                        progress,
+                        subtasks: tempModalSubtasks
+                    };
+                    showToast('Proyecto actualizado exitosamente', 'success');
+                }
+            } else {
+                // Create
+                const newProject = {
+                    id: 'proj-' + Date.now(),
+                    name,
+                    description,
+                    assignee,
+                    role,
+                    startDate,
+                    dueDate,
+                    priority,
+                    progress,
+                    subtasks: tempModalSubtasks
+                };
+                projects.unshift(newProject);
+                showToast('Proyecto registrado correctamente', 'success');
+            }
+
+            saveProjects();
+            closeProjectModal();
+        }
+
+        // Delete Modal Handlers
+        function openDeleteModal(id) {
+            projectToDeleteId = id;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeDeleteModal() {
+            projectToDeleteId = null;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function confirmDeleteProject() {
+            if (projectToDeleteId) {
+                projects = projects.filter(p => p.id !== projectToDeleteId);
+                saveProjects();
+                showToast('Proyecto eliminado', 'info');
+            }
+            closeDeleteModal();
+        }
+
+        // Helper Functions
+        function getInitials(name) {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return 'N/A';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function getPriorityBadge(priority) {
+            switch (priority) {
+                case 'Alta': return 'bg-red-500/20 text-red-300 border border-red-500/30';
+                case 'Media': return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                case 'Baja': return 'bg-slate-700 text-slate-300 border border-slate-600';
+                default: return 'bg-slate-700 text-slate-300';
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bg = 'bg-slate-800 text-white border-slate-700';
+            let icon = 'info';
+
+            if (type === 'success') {
+                bg = 'bg-emerald-950 text-emerald-200 border-emerald-800';
+                icon = 'check-circle';
+            } else if (type === 'error') {
+                bg = 'bg-red-950 text-red-200 border-red-800';
+                icon = 'alert-octagon';
+            }
+
+            toast.className = `flex items-center gap-2 px-4 py-3 rounded-xl border text-xs font-medium shadow-xl transition-all duration-300 transform translate-y-2 opacity-0 ${bg}`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
